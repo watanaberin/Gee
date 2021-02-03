@@ -1,25 +1,23 @@
 package gee
 
 import (
-	"fmt"
 	"net/http"
 )
 
-type HandlerFunc func(http.ResponseWriter, *http.Request)
+type HandlerFunc func(*Context)
 
 //key由method（post/get）和pattern（地址）构成 比如GET-/index
 //value-HandlerFunc是对应的方法
 type Engine struct {
-	router map[string]HandlerFunc
+	router *router
 }
 
 func New() *Engine {
-	return &Engine{router: make(map[string]HandlerFunc)}
+	return &Engine{router: newRouter()}
 }
 
 func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
-	key := method + "-" + pattern
-	engine.router[key] = handler
+	engine.router.addRoute(method,pattern,handler)
 }
 
 //调用GET or POST会注册到router中
@@ -37,10 +35,6 @@ func (engine *Engine) Run(addr string) (err error) {
 }
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
-	key := req.Method + "-" + req.URL.Path
-	if handler, ok := engine.router[key]; ok {
-		handler(w, req)
-	} else {
-		fmt.Fprintf(w, "404 not found: %s\n", req.URL)
-	}
+	c :=newContext(w,req)
+	engine.router.handle(c)
 }
